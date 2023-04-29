@@ -1,0 +1,32 @@
+version: '3'
+
+services:
+  postgres:
+    image: postgres:15
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: cep
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - .docker/postgresql/data:/var/lib/postgresql/data
+
+  cache:
+    image: redis:7
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - .docker/redis/data:/data
+
+  cache_ui:
+    image: rediscommander/redis-commander:latest
+    depends_on:
+      - cache
+    environment:
+      - REDIS_HOSTS=local:cache:6379
+    links:
+      - cache:cache
+    ports:
+      - "8081:8081"

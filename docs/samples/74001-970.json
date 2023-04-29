@@ -1,0 +1,24 @@
+{
+  "uf": "GO",
+  "localidade": "Goiânia",
+  "locNoSem": "",
+  "locNu": "",
+  "localidadeSubordinada": "",
+  "logradouroDNEC": "Praça Doutor Pedro Ludovico Teixeira, 11",
+  "logradouroTextoAdicional": "",
+  "logradouroTexto": "",
+  "bairro": "Setor Central",
+  "baiNu": "",
+  "nomeUnidade": "AC Central de Goiânia",
+  "cep": "74001970",
+  "tipoCep": "6",
+  "numeroLocalidade": "",
+  "situacao": "",
+  "faixasCaixaPostal": [
+    {
+      "caixaInicial": "1",
+      "caixaFinal": "1200"
+    }
+  ],
+  "faixasCep": []
+}
