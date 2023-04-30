@@ -57,7 +57,7 @@ func serve() error {
 		return err
 	}
 
-	now := time.Now
+	now := time.Now().UTC
 
 	ctx := context.Background()
 

@@ -4,9 +4,9 @@ import (
 	"context"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/brianvoe/gofakeit/v6"
+	"github.com/insighted4/correios-cep/pkg/app"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -49,7 +49,7 @@ func newTestPostgres(t *testing.T) (*Postgres, error) {
 		return nil, err
 	}
 
-	pg, err := Connect(context.Background(), cfg, time.Now)
+	pg, err := Connect(context.Background(), cfg, app.StartDate)
 	if err != nil {
 		return nil, err
 	}

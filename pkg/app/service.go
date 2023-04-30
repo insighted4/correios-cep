@@ -12,10 +12,10 @@ type Checker interface {
 }
 
 func StartDate() time.Time {
-	loc, err := time.LoadLocation("America/New_York")
+	date, err := time.Parse(time.RFC3339, "2023-01-01T00:00:00+00:00")
 	if err != nil {
 		panic(err)
 	}
 
-	return time.Date(2023, 01, 01, 01, 01, 0, 0, loc)
+	return date.UTC()
 }
