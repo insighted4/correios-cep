@@ -3,6 +3,8 @@
 # https://hub.docker.com/_/golang
 FROM golang:1.19-buster as builder
 
+ENV TZ=UTC
+
 RUN set -x \
     && apt-get update \
     && apt-get install -y build-essential ca-certificates git-core zip \
@@ -40,6 +42,9 @@ RUN set -x \
 # https://hub.docker.com/_/debian
 # https://docs.docker.com/develop/develop-images/multistage-build/#use-multi-stage-builds
 FROM debian:buster-slim
+
+ENV TZ=UTC
+
 RUN set -x \
     && apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential ca-certificates \

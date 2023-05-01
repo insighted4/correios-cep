@@ -1,10 +1,10 @@
 package server
 
 import (
-	"context"
 	"time"
 
 	gosundheit "github.com/AppsFlyer/go-sundheit"
+	"github.com/AppsFlyer/go-sundheit/checks"
 	"github.com/insighted4/correios-cep/pkg/app"
 	"github.com/insighted4/correios-cep/pkg/errors"
 	"github.com/insighted4/correios-cep/pkg/log"
@@ -31,7 +31,7 @@ type Config struct {
 	Now func() time.Time
 }
 
-type service struct {
+type Service struct {
 	cfg     Config
 	health  gosundheit.Health
 	logger  logrus.FieldLogger
@@ -41,16 +41,16 @@ type service struct {
 	now func() time.Time
 }
 
-var _ Server = (*service)(nil)
+var _ Server = (*Service)(nil)
 
-func New(cfg Config) *service {
+func New(cfg Config) *Service {
 	if cfg.Now == nil {
 		cfg.Now = time.Now
 	}
 
 	healthChecker := gosundheit.New()
 
-	svc := &service{
+	svc := &Service{
 		cfg:     cfg,
 		health:  healthChecker,
 		logger:  log.WithField("component", "server"),
@@ -63,15 +63,18 @@ func New(cfg Config) *service {
 	return svc
 }
 
-func (s *service) Run() error {
+func (s *Service) Run() error {
 	const op errors.Op = "server.Run"
 	s.logger.Infof("%s: Starting HTTP Server (%s)", app.Description, version.Version)
 
-	ctx := context.Background()
-
 	if s.storage != nil {
-		if err := s.storage.Check(ctx); err != nil {
-			s.logger.Errorf("error while checking connection with storage: %v", err)
+		check := &checks.CustomCheck{
+			CheckName: "database",
+			CheckFunc: storage.NewCustomHealthCheckFunc(s.storage, s.now),
+		}
+		if err := s.health.RegisterCheck(check, gosundheit.ExecutionPeriod(1*time.Second),
+			gosundheit.InitiallyPassing(false)); err != nil {
+			return errors.E(op, errors.KindUnexpected, err)
 		}
 	} else {
 		return errors.E(op, errors.KindUnexpected, "invalid storage configuration")
@@ -85,8 +88,7 @@ func (s *service) Run() error {
 	return nil
 }
 
-func (s *service) Shutdown() {
+func (s *Service) Shutdown() {
 	s.logger.Infof("%s: Stopping HTTP Server", app.Description)
 	s.storage.Close()
-
 }

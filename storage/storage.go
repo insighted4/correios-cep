@@ -5,7 +5,7 @@ import (
 )
 
 type Storage interface {
-	Close() error
+	Close()
 	Check(ctx context.Context) error
 
 	Create(ctx context.Context, code *Address) error

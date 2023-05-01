@@ -16,6 +16,8 @@ export GOBIN=$(PWD)/bin
 # to use the version the application uses, not whatever a developer has installed.
 export PATH=$(GOBIN):$(shell printenv PATH)
 
+export TZ=UTC
+
 # Version
 VERSION ?= $(shell ./scripts/git-version.sh)
 COMMIT_HASH ?= $(shell git rev-parse HEAD 2>/dev/null)

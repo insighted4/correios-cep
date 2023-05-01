@@ -27,7 +27,7 @@ var root = gin.H{
 	"version":         version.Version,
 }
 
-func (s *service) newHandler() http.Handler {
+func (s *Service) newHandler() http.Handler {
 	if s.cfg.ReleaseMode {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -45,46 +45,50 @@ func (s *service) newHandler() http.Handler {
 	return router
 }
 
-func (s *service) handleRoot(c *gin.Context) {
+func (s *Service) handleRoot(c *gin.Context) {
 	c.JSON(http.StatusOK, root)
 }
 
-func (s *service) handleNotFound(c *gin.Context) {
-	s.abortWithStatus(c, http.StatusNotFound, http.StatusText(http.StatusNotFound))
+func (s *Service) handleNotFound(c *gin.Context) {
+	s.abortWithStatus(c, http.StatusNotFound, http.StatusText(http.StatusNotFound), nil)
 }
 
-func (s *service) handleHealth(c *gin.Context) {
-	if s.health.IsHealthy() {
-		s.abortWithStatus(c, http.StatusInternalServerError, "Health check failed.")
+func (s *Service) handleHealth(c *gin.Context) {
+	result, healthy := s.health.Results()
+	if !healthy {
+		s.abortWithStatus(c, http.StatusInternalServerError, "Health check failed.", result)
 		return
 	}
 
 	s.logger.Infof("Health check passed")
+	c.JSON(http.StatusOK, result)
 }
 
-func (s *service) handlePing(c *gin.Context) {
+func (s *Service) handlePing(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
 type HTTPErrorResponse struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Details interface{} `json:"details,omitempty"`
 }
 
 func (er *HTTPErrorResponse) Error() string {
 	return fmt.Sprintf("%d - %s", er.Code, er.Message)
 }
 
-func (s *service) abortWithStatus(c *gin.Context, code int, message string) {
+func (s *Service) abortWithStatus(c *gin.Context, code int, message string, details interface{}) {
 	c.AbortWithStatusJSON(code, &HTTPErrorResponse{
 		Code:    code,
 		Message: message,
+		Details: details,
 	})
 }
 
 var newLine = regexp.MustCompile(`\r?\n?\t`)
 
-func (s *service) abortWithError(ctx *gin.Context, err error) {
+func (s *Service) abortWithError(ctx *gin.Context, err error, details interface{}) {
 	code := errors.KindUnexpected
 	msg := newLine.ReplaceAllString(err.Error(), " ")
 	e, ok := err.(*errors.Error)
@@ -98,5 +102,6 @@ func (s *service) abortWithError(ctx *gin.Context, err error) {
 	ctx.AbortWithStatusJSON(code, &HTTPErrorResponse{
 		Code:    code,
 		Message: msg,
+		Details: details,
 	})
 }

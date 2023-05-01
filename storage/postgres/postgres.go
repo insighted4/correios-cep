@@ -43,10 +43,9 @@ func Connect(ctx context.Context, cfg *pgxpool.Config, now func() time.Time) (*P
 	return &Postgres{db: db, logger: logger, now: now}, nil
 }
 
-func (p *Postgres) Close() error {
+func (p *Postgres) Close() {
 	p.logger.Info("Closing database")
 	p.db.Close()
-	return nil
 }
 
 func (p *Postgres) Check(ctx context.Context) error {

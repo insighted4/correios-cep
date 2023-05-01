@@ -31,9 +31,7 @@ func TestClose(t *testing.T) {
 		t.Error(err)
 	}
 
-	if err := pg.Close(); err != nil {
-		t.Error(err)
-	}
+	assert.NotPanics(t, func() { pg.Close() })
 }
 
 func TestCheck(t *testing.T) {

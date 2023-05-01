@@ -4,6 +4,10 @@ pids
 results
 tmp
 
+# Environment Variables
+.env
+.env.*
+
 # Binaries for programs and plugins
 *.dll
 *.dylib
