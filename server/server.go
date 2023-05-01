@@ -5,8 +5,10 @@ import (
 
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
+	"github.com/insighted4/correios-cep/correios"
 	"github.com/insighted4/correios-cep/pkg/app"
 	"github.com/insighted4/correios-cep/pkg/errors"
+	"github.com/insighted4/correios-cep/pkg/health"
 	"github.com/insighted4/correios-cep/pkg/log"
 	"github.com/insighted4/correios-cep/pkg/net"
 	"github.com/insighted4/correios-cep/pkg/version"
@@ -32,11 +34,12 @@ type Config struct {
 }
 
 type Service struct {
-	cfg     Config
-	health  gosundheit.Health
-	logger  logrus.FieldLogger
-	server  net.Server
-	storage storage.Storage
+	cfg      Config
+	correios correios.Client
+	health   gosundheit.Health
+	logger   logrus.FieldLogger
+	server   net.Server
+	storage  storage.Storage
 
 	now func() time.Time
 }
@@ -51,11 +54,12 @@ func New(cfg Config) *Service {
 	healthChecker := gosundheit.New()
 
 	svc := &Service{
-		cfg:     cfg,
-		health:  healthChecker,
-		logger:  log.WithField("component", "server"),
-		storage: cfg.Storage,
-		now:     cfg.Now,
+		cfg:      cfg,
+		correios: correios.New(net.NewClient()),
+		health:   healthChecker,
+		logger:   log.WithField("component", "server"),
+		storage:  cfg.Storage,
+		now:      cfg.Now,
 	}
 
 	svc.server = net.NewServer(cfg.HTTPServerConfig, svc.newHandler(), svc.Shutdown)
@@ -67,12 +71,19 @@ func (s *Service) Run() error {
 	const op errors.Op = "server.Run"
 	s.logger.Infof("%s: Starting HTTP Server (%s)", app.Description, version.Version)
 
+	if err := s.health.RegisterCheck(&checks.CustomCheck{
+		CheckName: "correios",
+		CheckFunc: health.NewCustomHealthCheckFunc(s.correios, s.now),
+	}, gosundheit.ExecutionPeriod(1*time.Second),
+		gosundheit.InitiallyPassing(false)); err != nil {
+		return errors.E(op, errors.KindUnexpected, err)
+	}
+
 	if s.storage != nil {
-		check := &checks.CustomCheck{
+		if err := s.health.RegisterCheck(&checks.CustomCheck{
 			CheckName: "database",
-			CheckFunc: storage.NewCustomHealthCheckFunc(s.storage, s.now),
-		}
-		if err := s.health.RegisterCheck(check, gosundheit.ExecutionPeriod(1*time.Second),
+			CheckFunc: health.NewCustomHealthCheckFunc(s.storage, s.now),
+		}, gosundheit.ExecutionPeriod(10*time.Second),
 			gosundheit.InitiallyPassing(false)); err != nil {
 			return errors.E(op, errors.KindUnexpected, err)
 		}
