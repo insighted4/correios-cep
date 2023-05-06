@@ -1,6 +1,15 @@
 version: '3'
 
 services:
+  admin:
+    build: .
+    image: correios-cep
+    command: ["admin", "serve"]
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+
   postgres:
     image: postgres:15
     ports:
