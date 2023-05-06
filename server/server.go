@@ -1,3 +1,17 @@
+// Copyright 2023 The Correios CEP Admin Authors
+//
+// Licensed under the AGPL, Version 3.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.gnu.org/licenses/agpl-3.0.en.html
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package server
 
 import (
@@ -12,6 +26,7 @@ import (
 	"github.com/insighted4/correios-cep/pkg/log"
 	"github.com/insighted4/correios-cep/pkg/net"
 	"github.com/insighted4/correios-cep/pkg/version"
+	"github.com/insighted4/correios-cep/server/handler"
 	"github.com/insighted4/correios-cep/storage"
 	"github.com/sirupsen/logrus"
 )
@@ -35,7 +50,7 @@ type Config struct {
 
 type Service struct {
 	cfg      Config
-	correios correios.Client
+	correios correios.Correios
 	health   gosundheit.Health
 	logger   logrus.FieldLogger
 	server   net.Server
@@ -51,18 +66,21 @@ func New(cfg Config) *Service {
 		cfg.Now = time.Now
 	}
 
+	correios := correios.New()
 	healthChecker := gosundheit.New()
 
 	svc := &Service{
 		cfg:      cfg,
-		correios: correios.New(net.NewClient()),
+		correios: correios,
 		health:   healthChecker,
 		logger:   log.WithField("component", "server"),
 		storage:  cfg.Storage,
 		now:      cfg.Now,
 	}
 
-	svc.server = net.NewServer(cfg.HTTPServerConfig, svc.newHandler(), svc.Shutdown)
+	httpHandler := handler.New(correios, cfg.Storage, healthChecker, cfg.ReleaseMode, cfg.Now)
+
+	svc.server = net.NewServer(cfg.HTTPServerConfig, httpHandler, svc.Shutdown)
 
 	return svc
 }
@@ -74,7 +92,7 @@ func (s *Service) Run() error {
 	if err := s.health.RegisterCheck(&checks.CustomCheck{
 		CheckName: "correios",
 		CheckFunc: health.NewCustomHealthCheckFunc(s.correios, s.now),
-	}, gosundheit.ExecutionPeriod(1*time.Second),
+	}, gosundheit.ExecutionPeriod(2*time.Minute),
 		gosundheit.InitiallyPassing(false)); err != nil {
 		return errors.E(op, errors.KindUnexpected, err)
 	}

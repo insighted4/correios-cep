@@ -11,6 +11,7 @@ require (
 	github.com/brianvoe/gofakeit/v6 v6.21.0
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-gonic/gin v1.9.0
+	github.com/go-resty/resty/v2 v2.7.0
 	github.com/jackc/pgx/v5 v5.3.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.7.0

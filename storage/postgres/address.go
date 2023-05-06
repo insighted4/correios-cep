@@ -1,3 +1,17 @@
+// Copyright 2023 The Correios CEP Admin Authors
+//
+// Licensed under the AGPL, Version 3.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.gnu.org/licenses/agpl-3.0.en.html
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package postgres
 
 import (
@@ -8,15 +22,15 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func (p *Postgres) Create(ctx context.Context, address *storage.Address) error {
-	const op errors.Op = "postgres.CreateAddressCode"
+func (p *Postgres) CreateAddress(ctx context.Context, address *storage.Address) error {
+	const op errors.Op = "postgres.CreateAddress"
 	query := `INSERT INTO addresses (
 				cep,
 				state,
 				city,
 				neighborhood,
             	location,
-                source,
+                children,
 				created_at,
 				updated_at
     		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8); 
@@ -32,7 +46,7 @@ func (p *Postgres) Create(ctx context.Context, address *storage.Address) error {
 		address.City,
 		address.Neighborhood,
 		address.Location,
-		address.Source,
+		address.Children,
 		address.CreatedAt,
 		address.UpdatedAt,
 	); err != nil {
@@ -42,8 +56,8 @@ func (p *Postgres) Create(ctx context.Context, address *storage.Address) error {
 	return nil
 }
 
-func (p *Postgres) Update(ctx context.Context, cep string, updater storage.Updater) error {
-	const op errors.Op = "postgres.UpdateAddressCode"
+func (p *Postgres) UpdateAddress(ctx context.Context, cep string, updater storage.Updater) error {
+	const op errors.Op = "postgres.UpdateAddress"
 
 	updateFn := func(tx pgx.Tx) error {
 		old, err := p.get(ctx, cep, op)
@@ -66,7 +80,7 @@ func (p *Postgres) Update(ctx context.Context, cep string, updater storage.Updat
 				city = $3,
 				neighborhood = $4,
 				location = $5,
-				source = $6,
+				children = $6,
 				updated_at = $7
 			WHERE
 				cep = $8;
@@ -78,7 +92,7 @@ func (p *Postgres) Update(ctx context.Context, cep string, updater storage.Updat
 			address.City,
 			address.Neighborhood,
 			address.Location,
-			address.Source,
+			address.Children,
 			address.UpdatedAt,
 			cep,
 		)
@@ -92,8 +106,8 @@ func (p *Postgres) Update(ctx context.Context, cep string, updater storage.Updat
 	return p.ExecTx(ctx, updateFn, op)
 }
 
-func (p *Postgres) Get(ctx context.Context, cep string) (*storage.Address, error) {
-	const op errors.Op = "postgres.GetAddressCodeByHandle"
+func (p *Postgres) GetAddress(ctx context.Context, cep string) (*storage.Address, error) {
+	const op errors.Op = "postgres.GetAddress"
 	return p.get(ctx, cep, op)
 }
 
@@ -105,7 +119,7 @@ func (p *Postgres) get(ctx context.Context, cep string, op errors.Op) (*storage.
 			city,
 			neighborhood,
 			location,
-			source,
+			children,
 			created_at,
 			updated_at
 		FROM addresses
@@ -116,11 +130,15 @@ func (p *Postgres) get(ctx context.Context, cep string, op errors.Op) (*storage.
 	return scan(row, op)
 }
 
-func (p *Postgres) List(ctx context.Context, params storage.ListParams) ([]*storage.Address, error) {
-	const op errors.Op = "postgres.ListAddressCodes"
+func (p *Postgres) ListAddresses(ctx context.Context, params storage.ListParams) ([]*storage.Address, error) {
+	const op errors.Op = "postgres.ListAddresses"
+
+	if params.State == "" {
+		return nil, errors.E(op, errors.KindBadRequest, "param state is required")
+	}
 
 	if params.Pagination == nil {
-		params.Pagination = storage.NewPagination(storage.PaginationLimit, 0)
+		return nil, errors.E(op, errors.KindUnexpected, "invalid pagination")
 	}
 
 	query := `
@@ -130,14 +148,12 @@ func (p *Postgres) List(ctx context.Context, params storage.ListParams) ([]*stor
 			city,
 			neighborhood,
 			location,
-			source,
+			children,
 			created_at,
 			updated_at
-		FROM addresses WHERE uf = $1 ORDER BY cep ASC LIMIT $2 OFFSET $3;
+		FROM addresses WHERE lower(state) = lower($1) ORDER BY cep ASC LIMIT $2 OFFSET $3;
 	`
-	p.db.Query(ctx, query, params.Pagination.Limit, params.Pagination.Offset)
-
-	rows, err := p.db.Query(ctx, query, params.Pagination.Limit, params.Pagination.Offset)
+	rows, err := p.db.Query(ctx, query, params.State, params.Pagination.Limit, params.Pagination.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +184,7 @@ func scan(row pgx.Row, op errors.Op) (*storage.Address, error) {
 		&address.City,
 		&address.Neighborhood,
 		&address.Location,
-		&address.Source,
+		&address.Children,
 		&address.CreatedAt,
 		&address.UpdatedAt,
 	); err != nil {
