@@ -9,6 +9,7 @@ import (
 	"github.com/insighted4/correios-cep/pkg/errors"
 	"github.com/insighted4/correios-cep/storage"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPostgres_Create(t *testing.T) {
@@ -24,31 +25,32 @@ func TestPostgres_Create(t *testing.T) {
 		City:         gofakeit.LoremIpsumWord(),
 		Neighborhood: gofakeit.LoremIpsumWord(),
 		Location:     gofakeit.LoremIpsumWord(),
-		Source:       gofakeit.Categories(),
+		Addresses: []*storage.Address{
+			{
+				CEP:          gofakeit.UUID(),
+				State:        gofakeit.LoremIpsumWord(),
+				City:         gofakeit.LoremIpsumWord(),
+				Neighborhood: gofakeit.LoremIpsumWord(),
+				Location:     gofakeit.LoremIpsumWord(),
+			},
+		},
 	}
 
 	ctx := context.Background()
-	if err := postgres.Create(ctx, p1); err != nil {
-		t.Fatal(err)
-	}
+	err := postgres.CreateAddress(ctx, p1)
+	require.NoError(t, err)
 
 	assert.NotNil(t, p1.CreatedAt)
 	assert.NotNil(t, p1.UpdatedAt)
 
 	p2, err := postgres.get(ctx, p1.CEP, errors.Op("TestPostgres_Create"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	j1, err := json.Marshal(p1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	j2, err := json.Marshal(p2)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	assert.JSONEq(t, string(j1), string(j2))
 }
@@ -66,18 +68,23 @@ func TestPostgres_Update(t *testing.T) {
 		City:         gofakeit.LoremIpsumWord(),
 		Neighborhood: gofakeit.LoremIpsumWord(),
 		Location:     gofakeit.LoremIpsumWord(),
-		Source:       gofakeit.Categories(),
+		Addresses: []*storage.Address{
+			{
+				CEP:          gofakeit.UUID(),
+				State:        gofakeit.LoremIpsumWord(),
+				City:         gofakeit.LoremIpsumWord(),
+				Neighborhood: gofakeit.LoremIpsumWord(),
+				Location:     gofakeit.LoremIpsumWord(),
+			},
+		},
 	}
 
 	ctx := context.Background()
-	if err := postgres.Create(ctx, p0); err != nil {
-		t.Fatal(err)
-	}
+	err := postgres.CreateAddress(ctx, p0)
+	require.NoError(t, err)
 
 	p1, err := postgres.get(ctx, p0.CEP, errors.Op("TestPostgres_UpdateProduct"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	p2UID := gofakeit.UUID()
 	updater := func(old *storage.Address) (*storage.Address, error) {
@@ -86,25 +93,30 @@ func TestPostgres_Update(t *testing.T) {
 		old.City = gofakeit.LoremIpsumWord()
 		old.Neighborhood = gofakeit.LoremIpsumWord()
 		old.Location = gofakeit.LoremIpsumWord()
-		old.Source = gofakeit.Categories()
+		old.Addresses = []*storage.Address{
+			{
+				CEP:          gofakeit.UUID(),
+				State:        gofakeit.LoremIpsumWord(),
+				City:         gofakeit.LoremIpsumWord(),
+				Neighborhood: gofakeit.LoremIpsumWord(),
+				Location:     gofakeit.LoremIpsumWord(),
+			},
+		}
 		return old, nil
 	}
 
-	if err := postgres.Update(ctx, p0.CEP, updater); err != nil {
-		t.Fatal(err)
-	}
+	err = postgres.UpdateAddress(ctx, p0.CEP, updater)
+	require.NoError(t, err)
 
 	p2, err := postgres.get(ctx, p2UID, errors.Op("TestPostgres_UpdateProduct"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	assert.NotEqual(t, p1.CEP, p2.CEP)
 	assert.NotEqual(t, p1.State, p2.State)
 	assert.NotEqual(t, p1.City, p2.City)
 	assert.NotEqual(t, p1.Neighborhood, p2.Neighborhood)
 	assert.NotEqual(t, p1.Location, p2.Location)
-	assert.NotEqual(t, p1.Source, p2.Source)
+	assert.NotEqual(t, p1.Addresses, p2.Addresses)
 	assert.Equal(t, p1.CreatedAt.UTC(), p2.CreatedAt.UTC())
 	assert.GreaterOrEqual(t, p2.UpdatedAt.UTC(), p1.UpdatedAt.UTC())
 }
@@ -116,7 +128,7 @@ func TestPostgres_GetNotFound(t *testing.T) {
 
 	setup(t)
 
-	p, err := postgres.Get(context.Background(), gofakeit.UUID())
+	p, err := postgres.GetAddress(context.Background(), gofakeit.UUID())
 	assert.True(t, errors.Is(err, errors.KindNotFound))
 	assert.Nil(t, p)
 }

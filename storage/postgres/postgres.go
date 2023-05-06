@@ -75,8 +75,11 @@ func (p *Postgres) ExecTx(ctx context.Context, fn func(tx pgx.Tx) error, op erro
 }
 
 func kind(err error) int {
-	if err.Error() == pgx.ErrNoRows.Error() {
+	switch {
+	case err.Error() == pgx.ErrNoRows.Error():
 		return errors.KindNotFound
+	default:
+		return errors.Kind(err)
 	}
 
 	// TODO (danielnegri): Clean-up native Postgres error handling.
@@ -90,5 +93,4 @@ func kind(err error) int {
 	//	}
 	//}
 
-	return errors.KindUnexpected
 }

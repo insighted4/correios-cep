@@ -12,6 +12,7 @@ import (
 	"github.com/insighted4/correios-cep/pkg/log"
 	"github.com/insighted4/correios-cep/pkg/net"
 	"github.com/insighted4/correios-cep/pkg/version"
+	"github.com/insighted4/correios-cep/server/handler"
 	"github.com/insighted4/correios-cep/storage"
 	"github.com/sirupsen/logrus"
 )
@@ -35,7 +36,7 @@ type Config struct {
 
 type Service struct {
 	cfg      Config
-	correios correios.Client
+	correios correios.Correios
 	health   gosundheit.Health
 	logger   logrus.FieldLogger
 	server   net.Server
@@ -51,18 +52,21 @@ func New(cfg Config) *Service {
 		cfg.Now = time.Now
 	}
 
+	correios := correios.New(net.NewClient())
 	healthChecker := gosundheit.New()
 
 	svc := &Service{
 		cfg:      cfg,
-		correios: correios.New(net.NewClient()),
+		correios: correios,
 		health:   healthChecker,
 		logger:   log.WithField("component", "server"),
 		storage:  cfg.Storage,
 		now:      cfg.Now,
 	}
 
-	svc.server = net.NewServer(cfg.HTTPServerConfig, svc.newHandler(), svc.Shutdown)
+	httpHandler := handler.New(correios, cfg.Storage, healthChecker, cfg.ReleaseMode, cfg.Now)
+
+	svc.server = net.NewServer(cfg.HTTPServerConfig, httpHandler, svc.Shutdown)
 
 	return svc
 }

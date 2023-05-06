@@ -8,18 +8,18 @@ type Storage interface {
 	Close()
 	Check(ctx context.Context) error
 
-	Create(ctx context.Context, code *Address) error
-	Update(ctx context.Context, cep string, updater Updater) error
-	Get(ctx context.Context, cep string) (*Address, error)
-	List(ctx context.Context, params ListParams) ([]*Address, error)
+	CreateAddress(ctx context.Context, address *Address) error
+	UpdateAddress(ctx context.Context, cep string, updater Updater) error
+	GetAddress(ctx context.Context, cep string) (*Address, error)
+	ListAddresses(ctx context.Context, params ListParams) ([]*Address, error)
 }
 
 type (
 	Updater func(old *Address) (*Address, error)
 
 	ListParams struct {
+		State      string
 		Pagination *Pagination
-		UF         string
 	}
 )
 
@@ -34,7 +34,7 @@ type Pagination struct {
 }
 
 func NewPagination(perPage, page int) *Pagination {
-	if perPage >= PaginationLimit {
+	if perPage < 1 || perPage > PaginationLimit {
 		perPage = PaginationLimit
 	}
 

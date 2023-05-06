@@ -5,9 +5,9 @@ CREATE TABLE IF NOT EXISTS addresses
     city         TEXT,
     neighborhood TEXT,
     location     TEXT,
-    source       JSONB,
+    addresses    JSONB,
     created_at   TIMESTAMPTZ DEFAULT now() NOT NULL,
     updated_at   TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS addresses_uf_idx ON addresses (state);
+CREATE INDEX IF NOT EXISTS addresses_state_idx ON addresses (state);

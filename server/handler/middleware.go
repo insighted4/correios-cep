@@ -1,4 +1,4 @@
-package server
+package handler
 
 import (
 	"time"
@@ -6,6 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
+
+const HeaderRequestID = "X-Request-Id"
 
 // LoggerMiddleware returns a gin.HandlerFunc (middleware) that logs requests using logrus.
 //
@@ -36,7 +38,7 @@ func LoggerMiddleware(logger logrus.FieldLogger, now func() time.Time, timeForma
 			"content_type": c.ContentType(),
 			"remote-addr":  c.ClientIP(),
 			"user-agent":   c.Request.UserAgent(),
-			"x-request-id": c.GetHeader("X-Request-Id"),
+			"x-request-id": c.GetHeader(HeaderRequestID),
 			"latency":      latency,
 			"time":         end.Format(timeFormat),
 		})
