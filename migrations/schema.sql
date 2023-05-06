@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS addresses
     city         TEXT,
     neighborhood TEXT,
     location     TEXT,
-    addresses    JSONB,
+    children    JSONB,
     created_at   TIMESTAMPTZ DEFAULT now() NOT NULL,
     updated_at   TIMESTAMPTZ DEFAULT now() NOT NULL
 );

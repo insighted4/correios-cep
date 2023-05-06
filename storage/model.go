@@ -10,7 +10,7 @@ type Address struct {
 	City         string     `json:"city" db:"location"`
 	Neighborhood string     `json:"neighborhood" db:"neighborhood"`
 	Location     string     `json:"location" db:"location"`
-	Addresses    []*Address `json:"addresses" db:"addresses"`
+	Children     []*Address `json:"children" db:"children"`
 
 	CreatedAt *time.Time `json:"created_at,omitempty,omitempty"  db:"cep"`
 	UpdatedAt *time.Time `json:"updated_at,omitempty,omitempty"  db:"cep"`

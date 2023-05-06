@@ -52,7 +52,7 @@ func New(cfg Config) *Service {
 		cfg.Now = time.Now
 	}
 
-	correios := correios.New(net.NewClient())
+	correios := correios.New()
 	healthChecker := gosundheit.New()
 
 	svc := &Service{
@@ -78,7 +78,7 @@ func (s *Service) Run() error {
 	if err := s.health.RegisterCheck(&checks.CustomCheck{
 		CheckName: "correios",
 		CheckFunc: health.NewCustomHealthCheckFunc(s.correios, s.now),
-	}, gosundheit.ExecutionPeriod(1*time.Second),
+	}, gosundheit.ExecutionPeriod(2*time.Minute),
 		gosundheit.InitiallyPassing(false)); err != nil {
 		return errors.E(op, errors.KindUnexpected, err)
 	}

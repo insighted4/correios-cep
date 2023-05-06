@@ -1,0 +1,4 @@
+GET http://localhost:8080/api/addresses/74323270
+Accept: application/json
+
+###

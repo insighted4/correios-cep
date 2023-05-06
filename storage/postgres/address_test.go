@@ -25,7 +25,7 @@ func TestPostgres_Create(t *testing.T) {
 		City:         gofakeit.LoremIpsumWord(),
 		Neighborhood: gofakeit.LoremIpsumWord(),
 		Location:     gofakeit.LoremIpsumWord(),
-		Addresses: []*storage.Address{
+		Children: []*storage.Address{
 			{
 				CEP:          gofakeit.UUID(),
 				State:        gofakeit.LoremIpsumWord(),
@@ -68,7 +68,7 @@ func TestPostgres_Update(t *testing.T) {
 		City:         gofakeit.LoremIpsumWord(),
 		Neighborhood: gofakeit.LoremIpsumWord(),
 		Location:     gofakeit.LoremIpsumWord(),
-		Addresses: []*storage.Address{
+		Children: []*storage.Address{
 			{
 				CEP:          gofakeit.UUID(),
 				State:        gofakeit.LoremIpsumWord(),
@@ -93,7 +93,7 @@ func TestPostgres_Update(t *testing.T) {
 		old.City = gofakeit.LoremIpsumWord()
 		old.Neighborhood = gofakeit.LoremIpsumWord()
 		old.Location = gofakeit.LoremIpsumWord()
-		old.Addresses = []*storage.Address{
+		old.Children = []*storage.Address{
 			{
 				CEP:          gofakeit.UUID(),
 				State:        gofakeit.LoremIpsumWord(),
@@ -116,7 +116,7 @@ func TestPostgres_Update(t *testing.T) {
 	assert.NotEqual(t, p1.City, p2.City)
 	assert.NotEqual(t, p1.Neighborhood, p2.Neighborhood)
 	assert.NotEqual(t, p1.Location, p2.Location)
-	assert.NotEqual(t, p1.Addresses, p2.Addresses)
+	assert.NotEqual(t, p1.Children, p2.Children)
 	assert.Equal(t, p1.CreatedAt.UTC(), p2.CreatedAt.UTC())
 	assert.GreaterOrEqual(t, p2.UpdatedAt.UTC(), p1.UpdatedAt.UTC())
 }

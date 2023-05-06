@@ -2,55 +2,58 @@ package correios
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"net/url"
+	"time"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/insighted4/correios-cep/pkg/errors"
 	"github.com/insighted4/correios-cep/pkg/log"
+	"github.com/insighted4/correios-cep/pkg/net"
 	"github.com/insighted4/correios-cep/storage"
 	"github.com/sirupsen/logrus"
 )
 
 const (
-	lookupURL = "https://buscacepinter.correios.com.br/app/consulta/html/consulta-detalhes-cep.php"
-	userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; rv:10.0) Gecko/20100101 Firefox/10.0"
+	baseURL   = "https://buscacepinter.correios.com.br"
+	lookupURL = "/app/consulta/html/consulta-detalhes-cep.php"
 )
 
 type client struct {
-	cli    *http.Client
+	cli    *resty.Client
 	logger logrus.FieldLogger
 }
 
 var _ Correios = (*client)(nil)
 
-func New(cli *http.Client) Correios {
-	return &client{cli: cli, logger: log.Logger().WithField("component", "correios")}
+func New() Correios {
+	logger := log.WithField("component", "correios")
+	cli := net.NewClient().
+		SetBaseURL(baseURL).
+		SetHeader("Accept", "application/json").
+		SetHeader("Referer", baseURL).
+		SetLogger(logger).
+		SetRetryCount(3).
+		SetTimeout(20 * time.Second)
+
+	return &client{
+		cli:    cli,
+		logger: logger,
+	}
 }
 
 func (c *client) Check(ctx context.Context) error {
 	const op errors.Op = "correios.Check"
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodHead, lookupURL, nil)
-	if err != nil {
-		c.logger.Errorf("unable to create new request: %v", err)
-		return errors.E(op, errors.KindUnexpected, err)
-	}
-
-	req.Header.Set("User-Agent", userAgent)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.cli.Do(req)
+	resp, err := c.cli.R().Head(lookupURL)
 	if err != nil {
 		c.logger.Errorf("failed to check Correios: %v", err)
 		return errors.E(op, errors.KindUnexpected, err)
 	}
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode() != http.StatusOK {
 		c.logger.Errorf("failed to check Correios: unexpected status code %d", resp.StatusCode)
-		return errors.E(op, errors.KindUnexpected, fmt.Sprintf("HEAD %s returned %d", lookupURL, resp.StatusCode))
+		return errors.E(op, errors.KindUnexpected, fmt.Sprintf("HEAD %s returned %d", lookupURL, resp.StatusCode()))
 	}
 
 	return nil
@@ -76,7 +79,17 @@ type Dado struct {
 	FaixasCEP                []interface{} `json:"faixasCep"`
 }
 
-type Response struct {
+func (d *Dado) toAddress() *storage.Address {
+	return &storage.Address{
+		CEP:          d.CEP,
+		State:        d.UF,
+		City:         d.Localidade,
+		Neighborhood: d.Bairro,
+		Location:     d.LogradouroDNEC,
+	}
+}
+
+type LookupResponse struct {
 	Erro     bool    `json:"erro"`
 	Mensagem string  `json:"mensagem"`
 	Total    int     `json:"total"`
@@ -86,39 +99,20 @@ type Response struct {
 func (c *client) Lookup(ctx context.Context, cep string) (*storage.Address, error) {
 	const op errors.Op = "correios.Lookup"
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, lookupURL, nil)
-	if err != nil {
-		c.logger.Errorf("unable to create new request: %v", err)
-		return nil, errors.E(op, errors.KindUnexpected, err)
+	form := map[string]string{
+		"cep": cep,
 	}
 
-	req.Header.Set("User-Agent", userAgent)
-	req.Header.Set("Content-Type", "application/json")
-
-	req.PostForm = url.Values{}
-	req.PostForm.Set("cep", cep)
-
-	resp, err := c.cli.Do(req)
+	response := new(LookupResponse)
+	resp, err := c.cli.R().SetFormData(form).SetResult(&response).Post(lookupURL)
 	if err != nil {
 		c.logger.Errorf("failed to lookup address: %v", err)
 		return nil, errors.E(op, errors.KindUnexpected, err)
 	}
-	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode() != http.StatusOK {
 		c.logger.Errorf("failed to lookup address: unexpected status code %d", resp.StatusCode)
-		return nil, errors.E(op, errors.KindUnexpected, fmt.Sprintf("POST %s returned %d", lookupURL, resp.StatusCode))
-	}
-
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.E(op, errors.KindUnexpected)
-	}
-
-	response := new(Response)
-	err = json.Unmarshal(data, &response)
-	if err != nil {
-		return nil, errors.E(op, errors.KindUnexpected, err)
+		return nil, errors.E(op, errors.KindUnexpected, fmt.Sprintf("POST %s returned %d", lookupURL, resp.StatusCode()))
 	}
 
 	if len(response.Dados) == 0 {
@@ -126,14 +120,12 @@ func (c *client) Lookup(ctx context.Context, cep string) (*storage.Address, erro
 	}
 
 	address := &storage.Address{CEP: cep}
+	if len(response.Dados) == 1 {
+		return response.Dados[0].toAddress(), nil
+	}
+
 	for _, dado := range response.Dados {
-		address.Addresses = append(address.Addresses, &storage.Address{
-			CEP:          dado.CEP,
-			State:        dado.UF,
-			City:         dado.Localidade,
-			Neighborhood: dado.Bairro,
-			Location:     dado.LogradouroDNEC,
-		})
+		address.Children = append(address.Children, dado.toAddress())
 	}
 
 	return address, nil

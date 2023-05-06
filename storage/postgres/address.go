@@ -16,7 +16,7 @@ func (p *Postgres) CreateAddress(ctx context.Context, address *storage.Address) 
 				city,
 				neighborhood,
             	location,
-                addresses,
+                children,
 				created_at,
 				updated_at
     		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8); 
@@ -32,7 +32,7 @@ func (p *Postgres) CreateAddress(ctx context.Context, address *storage.Address) 
 		address.City,
 		address.Neighborhood,
 		address.Location,
-		address.Addresses,
+		address.Children,
 		address.CreatedAt,
 		address.UpdatedAt,
 	); err != nil {
@@ -66,7 +66,7 @@ func (p *Postgres) UpdateAddress(ctx context.Context, cep string, updater storag
 				city = $3,
 				neighborhood = $4,
 				location = $5,
-				addresses = $6,
+				children = $6,
 				updated_at = $7
 			WHERE
 				cep = $8;
@@ -78,7 +78,7 @@ func (p *Postgres) UpdateAddress(ctx context.Context, cep string, updater storag
 			address.City,
 			address.Neighborhood,
 			address.Location,
-			address.Addresses,
+			address.Children,
 			address.UpdatedAt,
 			cep,
 		)
@@ -105,7 +105,7 @@ func (p *Postgres) get(ctx context.Context, cep string, op errors.Op) (*storage.
 			city,
 			neighborhood,
 			location,
-			addresses,
+			children,
 			created_at,
 			updated_at
 		FROM addresses
@@ -134,7 +134,7 @@ func (p *Postgres) ListAddresses(ctx context.Context, params storage.ListParams)
 			city,
 			neighborhood,
 			location,
-			addresses,
+			children,
 			created_at,
 			updated_at
 		FROM addresses WHERE lower(state) = lower($1) ORDER BY cep ASC LIMIT $2 OFFSET $3;
@@ -170,7 +170,7 @@ func scan(row pgx.Row, op errors.Op) (*storage.Address, error) {
 		&address.City,
 		&address.Neighborhood,
 		&address.Location,
-		&address.Addresses,
+		&address.Children,
 		&address.CreatedAt,
 		&address.UpdatedAt,
 	); err != nil {
